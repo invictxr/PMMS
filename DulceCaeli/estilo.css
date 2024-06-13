@@ -1,0 +1,240 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+html {
+    scroll-behavior: smooth;
+    height: 500vh;
+}
+body {
+    background: #0D0D0D;
+    color: #fff;
+}
+header.interface {
+    max-width: 1280px;
+    margin: 5px;
+}
+.flex {
+    display:flex;
+    align-items: center;
+
+}
+.barra-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+.title-banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+header {
+    width: 100%;
+    padding: 20px 1%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    transition: 0.5s;
+}
+header.rolagem {
+    background-color: #6f2492;
+    padding: 10px 1%;
+}
+header.rolagem a {
+    text-decoration: none;
+    font-size: 30px;
+}
+.logo {
+    width: 50px;
+    height: auto;
+}
+header ul {
+    list-style-type: none;
+}
+header ul li {
+    display: inline-block;
+    margin: 0px 30px;
+}
+header ul li a {
+    color: #fff;
+    text-decoration: none;
+    font-size: 30px;
+    transition: text-shadow 1.5s ease;
+}
+.barra-nav ul li a:hover {
+    transition: 1.5s;
+    color: #fff;
+    text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff, 0 0 80px #fff, 0 0 120px #fff;
+}
+/* ---------- Banner ----------*/
+.banner {
+    height: 100vh;
+    background-image: url(image/banner.png);
+    background-position: center;
+    background-repeat: no;
+    background-size: cover;
+
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 60px;
+}
+.banner2 {
+    height: 100vh;
+    background-image: url(image/banner2.jpg);
+    background-position: center;
+    background-repeat: no;
+    background-size: cover;
+
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 60px;
+}
+.banner3 {
+    height: 100vh;
+    background-image: url(image/Default_A_group_of_adventurers_on_top_of_a_cliff_looking_at_th.jpg);
+    background-position: center;
+    background-repeat: no;
+    background-size: 180px; /* Largura de 100px, altura ajustada automaticamente */
+    background-size: 70%;
+
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 60px;
+}
+.banner4 {
+    height: 100vh;
+    background-image: url(image/banner4.jpg);
+    background-position: center;
+    background-repeat: no;
+    background-size: cover;
+
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 60px;
+}
+.banner h1 {
+    font-size: 140px;
+}
+.banner h1 span {
+    color: #e6e6e6;
+}
+/* ---------- Sobre ----------*/
+.sobre img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 40px;
+}
+section.sobre {
+    padding: 40px 4%;
+}
+section.sobre .txt-sobre {
+    color: #fff;
+}
+section.sobre .flex {
+    align-items: center;
+    justify-content: center;
+    gap: 90px;
+}
+.txt-sobre h1 {
+    font-size: 90px;
+    margin-bottom: 30px;
+    color: #6d20ac;
+}
+.txt-sobre p {
+    font-size: 30px;
+    text-align: justify;
+    margin: 20px 0;
+}
+
+#portfolio {
+    padding: 50px 0;
+}
+.lista-trabalhos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-gap: 40px;
+}
+.trabalhos {
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+.trabalhos img {
+    width: 100%;
+    border-radius: 10px;
+    display: block;
+    transition: transform 0.5s;
+}
+.trabalhos:hover img
+{
+    transform: scale(1.1);
+}
+.trabalhos:hover .layer
+{
+    height: 100%;
+}
+.layer{
+    width: 100%;
+    height: 0;
+    background: linear-gradient(rgba(0,0,0,0.6),#a20cdd);
+    border-radius: 10px;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 0 40px;
+}
+.layer h3
+{
+    font-weight: 500;
+    margin-bottom: 20px;
+}
+.layer a{
+    margin-top: 20px;
+    color: #a20cdd;
+    text-decoration: none;
+    font-size: 18px;
+    line-height: 60px;
+    background: #fff;
+    width: 60px;
+    height: 60px;
+    text-align: center;
+    border-radius: 50%;
+}
+
+.imagem {
+    width: 100px; 
+    height: 150px; 
+    object-fit: cover; 
+}
+
+/*.fundo {
+    background-image: url('image/Default_starry_night_sky_with_purple_details_and_a_lake_reflec_3.jpg');
+    background-size: cover;
+    background-position: center;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}*/
+
+.contatos{
+
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dulce Caeli</title>
+    <link rel="stylesheet" href="estilo.css" type="text/css">
+</head>
+<body>
+    <header id="header">
+        <div class="interface">
+            <div class="barra-nav">
+                <a href="#"><img src="image/logo2.png" class="logo"></a>
+                <nav>
+                    <ul>
+                        <li><a href="home.html">Home</a></li>
+                        <li><a href="universo.html">Universo</a></li>
+                        <li><a href="personagens.html">Personagens</a></li>
+                        <li><a href="compre.html">Contato</a></li>
+                        <li><a href="sobre.html">Sobre Nós</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="banner2" >
+            <div class="interface">
+                <div class="flex">
+                    <div class="title-banner">
+                        <h1><img src="image/LogoDulceCaeli4.png"></h1>
+                    </div>
+                </div>                
+            </div>
+        </section>
+
+        <form action="processa.php" method="POST" >
+            <div class="contatos">
+                <input type="text" name="nome" placeholder="Nome"><br>
+                <input type="email" name="email" placeholder="Email"><br>
+                <textarea cols="30" rows="10" name="mensagem" placeholder ="Digite sua mensagem" required></textarea><br>
+                <input type="button" value="">
+                <button type="submit">ENVIAR </button>
+                <input type="hidden" name="_subject" value= "Novo Contato">
+                <br>
+            
+            </div>
+        </form>
+    </main>
+
+    <script src="menu.js"></script>
+</body>
+</html>z
