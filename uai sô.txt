@@ -1,0 +1,275 @@
+uai sô
+#include <WiFi.h>
+#include <WebServer.h>
+#include <WebSocketsServer.h>
+#include <DallasTemperature.h>
+#include <OneWire.h> // Adicionei esta linha para importar OneWire
+
+const char* ssid = "uPesy";
+const char* password = "senai123";
+
+IPAddress local_ip(192, 168, 0, 1);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+#define ONE_WIRE_BUS2 22 // DS18B20 on NodeMCU pin D22
+#define ONE_WIRE_BUS0 23 // DS18B20 on NodeMCU pin D23
+#define ONE_WIRE_BUS5 21 // DS18B20 on NodeMCU pin D1
+
+WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
+
+float temp_1, temp_2, temp_3, temp_4, temp_5, temp_6, temp_7, temp_8, temp_9, temp_10;
+float last_temp_1, last_temp_2, last_temp_3, last_temp_4, last_temp_5, last_temp_6, last_temp_7, last_temp_8, last_temp_9, last_temp_10;
+
+DeviceAddress EndSensor1, EndSensor2, EndSensor3, EndSensor4, EndSensor5, EndSensor6, EndSensor7, EndSensor8, EndSensor9, EndSensor10;
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(local_ip, gateway, subnet);
+  WiFi.softAP(ssid, password);
+
+  Serial.print("[+] AP Created with IP Gateway ");
+  Serial.println(WiFi.softAPIP());
+
+  server.on("/", []() {
+    server.send(200, "text/html", getPage());
+  });
+
+  server.begin();
+  webSocket.begin();
+}
+
+void loop() {
+  server.handleClient();
+  webSocket.loop();
+
+  // Verifica se houve mudança nas temperaturas
+  checkTemperatures();
+}
+
+void checkTemperatures() {
+  float current_temps[10] = {temp_1, temp_2, temp_3, temp_4, temp_5, temp_6, temp_7, temp_8, temp_9, temp_10};
+  float last_temps[10] = {last_temp_1, last_temp_2, last_temp_3, last_temp_4, last_temp_5, last_temp_6, last_temp_7, last_temp_8, last_temp_9, last_temp_10};
+
+  for (int i = 0; i < 10; ++i) {
+    if (current_temps[i] != last_temps[i]) {
+      // Atualiza a última temperatura conhecida
+      last_temps[i] = current_temps[i];
+      // Envia a atualização via WebSocket
+      updateSensorTemperature(i, current_temps[i]);
+    }
+  }
+}
+
+void updateSensorTemperature(int sensor_index, float temperature) {
+  String sensor_id = "sensor-" + String(sensor_index + 1);
+  String temp_id = "temp-" + String(sensor_index + 1);
+  
+  String message = sensor_id + ":" + String(temperature, 2); // Exemplo de mensagem: "sensor-1:25.50"
+  webSocket.broadcastTXT(message); // Envia a mensagem para todos os clientes conectados
+}
+
+void getPage() {
+  String page = "<!DOCTYPE html><html lang='pt-BR'>";
+  page += "<head>";
+  page += "<meta charset='UTF-8'>";
+  page += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  page += "<style>";
+  page += "* { font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #fff; }";
+  page += "body { background-color: black; text-align: center; }";
+  page += "h1 { font-size: 30px; font-weight: 700; }";
+  page += ".sensores { flex-wrap: wrap; justify-content: center; align-items: center; }";
+  page += ".flex { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }";
+  page += ".sensor { width: 120px; padding: 18px; margin: 5px; flex-direction: column; align-items: center; justify-content: center; background: #252525; border-radius: 40px; box-shadow: 0px 0px 5px -3px #fff; }";
+  page += ".sensor p { font-size: 18px; font-weight: 600; }";
+  page += ".temp { font-size: 30px; font-weight: 600; color: #fff; margin: 25px 0 25px 0; }";
+  page += ".sensor p, .sensor .status { margin: 0; }";
+  page += "</style>";
+  page += "<title>PMMS</title>";
+  page += "<script>";
+  page += "var socket = new WebSocket('ws://' + window.location.hostname + ':81/');";
+  page += "socket.onmessage = function(event) {";
+  page += "  var data = event.data.split(':');";
+  page += "  var sensorId = data[0];";
+  page += "  var temperature = data[1];";
+  page += "  document.getElementById(sensorId).querySelector('.temp').textContent = temperature + '°C';";
+  page += "}";
+  page += "</script>";
+  page += "</head>";
+  page += "<body>";
+  page += "<h1>Sensores</h1>";
+  page += "<div class='sensores'>";
+  page += "<div class='flex'>";
+  
+  for (int i = 0; i < 10; ++i) {
+    page += "<div class='sensor' id='sensor-" + String(i + 1) + "'>";
+    page += "<p>Sensor - " + String(i + 1) + "</p>";
+    page += "<div class='temp' id='temp-" + String(i + 1) + "'>";
+    page += current_temps[i];
+    page += "°C</div>";
+    page += "<div class='status' id='status-" + String(i + 1) + "'>Ativo</div>";
+    page += "</div>";
+  }
+  
+  page += "</div>";  // Fecha flex
+  page += "</div>";  // Fecha sensores
+  page += "</body></html>";
+  
+  return page;
+}
+
+uai sô 2.0
+#include <WiFi.h>
+#include <WebServer.h>
+#include <WebSocketsServer.h>
+#include <DallasTemperature.h>
+#include <OneWire.h>
+
+const char* ssid = "uPesy";
+const char* password = "senai123";
+
+IPAddress local_ip(192, 168, 0, 1);
+IPAddress gateway(192, 168, 0, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+#define ONE_WIRE_BUS2 22 // DS18B20 on NodeMCU pin D22
+#define ONE_WIRE_BUS0 23 // DS18B20 on NodeMCU pin D23
+#define ONE_WIRE_BUS5 21 // DS18B20 on NodeMCU pin D1
+
+WebServer server(80);
+WebSocketsServer webSocket = WebSocketsServer(81);
+
+float temp_1, temp_2, temp_3, temp_4, temp_5, temp_6, temp_7, temp_8, temp_9, temp_10;
+float last_temp_1, last_temp_2, last_temp_3, last_temp_4, last_temp_5, last_temp_6, last_temp_7, last_temp_8, last_temp_9, last_temp_10;
+bool status_1, status_2, status_3, status_4, status_5, status_6, status_7, status_8, status_9, status_10;
+
+DeviceAddress EndSensor1, EndSensor2, EndSensor3, EndSensor4, EndSensor5, EndSensor6, EndSensor7, EndSensor8, EndSensor9, EndSensor10;
+
+void setup() {
+  Serial.begin(115200);
+
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(local_ip, gateway, subnet);
+  WiFi.softAP(ssid, password);
+
+  Serial.print("[+] AP Created with IP Gateway ");
+  Serial.println(WiFi.softAPIP());
+
+  server.on("/", []() {
+    server.send(200, "text/html", getPage());
+  });
+
+  server.begin();
+  webSocket.begin();
+}
+
+void loop() {
+  server.handleClient();
+  webSocket.loop();
+
+  // Verifica se houve mudança nas temperaturas
+  checkTemperatures();
+}
+
+void checkTemperatures() {
+  float current_temps[10] = {temp_1, temp_2, temp_3, temp_4, temp_5, temp_6, temp_7, temp_8, temp_9, temp_10};
+  float last_temps[10] = {last_temp_1, last_temp_2, last_temp_3, last_temp_4, last_temp_5, last_temp_6, last_temp_7, last_temp_8, last_temp_9, last_temp_10};
+  bool statuses[10] = {status_1, status_2, status_3, status_4, status_5, status_6, status_7, status_8, status_9, status_10};
+
+  for (int i = 0; i < 10; ++i) {
+    if (current_temps[i] != last_temps[i] || statuses[i] != getStatus(current_temps[i])) {
+      // Atualiza a última temperatura conhecida e o status
+      last_temps[i] = current_temps[i];
+      statuses[i] = getStatus(current_temps[i]);
+      
+      // Envia a atualização via WebSocket
+      updateSensorStatus(i, current_temps[i], statuses[i]);
+    }
+  }
+
+  // Atualiza as variáveis de última temperatura e status
+  last_temp_1 = current_temps[0]; last_temp_2 = current_temps[1];
+  last_temp_3 = current_temps[2]; last_temp_4 = current_temps[3];
+  last_temp_5 = current_temps[4]; last_temp_6 = current_temps[5];
+  last_temp_7 = current_temps[6]; last_temp_8 = current_temps[7];
+  last_temp_9 = current_temps[8]; last_temp_10 = current_temps[9];
+
+  status_1 = statuses[0]; status_2 = statuses[1]; status_3 = statuses[2];
+  status_4 = statuses[3]; status_5 = statuses[4]; status_6 = statuses[5];
+  status_7 = statuses[6]; status_8 = statuses[7]; status_9 = statuses[8]; status_10 = statuses[9];
+}
+
+bool getStatus(float temperature) {
+  // Define as condições para que o sensor seja considerado "ativo"
+  // Por exemplo, ativo se a temperatura estiver entre 0 e 50 graus Celsius
+  if (temperature >= 0 && temperature <= 50) {
+    return true;
+  }
+  return false;
+}
+
+void updateSensorStatus(int sensor_index, float temperature, bool status) {
+  String sensor_id = "sensor-" + String(sensor_index + 1);
+  String temp_id = "temp-" + String(sensor_index + 1);
+  
+  // Formata a mensagem com o ID do sensor, temperatura e status
+  String message = sensor_id + ":" + String(temperature, 2) + ":" + (status ? "Ativo" : "Inativo");
+  webSocket.broadcastTXT(message); // Envia a mensagem para todos os clientes conectados
+}
+
+String getPage() {
+  String page = "<!DOCTYPE html><html lang='pt-BR'>";
+  page += "<head>";
+  page += "<meta charset='UTF-8'>";
+  page += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  page += "<style>";
+  page += "* { font-family: Arial, Helvetica, sans-serif; font-size: 15px; color: #fff; }";
+  page += "body { background-color: black; text-align: center; }";
+  page += "h1 { font-size: 30px; font-weight: 700; }";
+  page += ".sensores { flex-wrap: wrap; justify-content: center; align-items: center; }";
+  page += ".flex { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; }";
+  page += ".sensor { width: 120px; padding: 18px; margin: 5px; flex-direction: column; align-items: center; justify-content: center; background: #252525; border-radius: 40px; box-shadow: 0px 0px 5px -3px #fff; }";
+  page += ".sensor p { font-size: 18px; font-weight: 600; }";
+  page += ".temp { font-size: 30px; font-weight: 600; color: #fff; margin: 25px 0 25px 0; }";
+  page += ".sensor p, .sensor .status { margin: 0; }";
+  page += "</style>";
+  page += "<title>PMMS</title>";
+  page += "<script>";
+  page += "var socket = new WebSocket('ws://' + window.location.hostname + ':81/');";
+  page += "socket.onmessage = function(event) {";
+  page += "  var data = event.data.split(':');";
+  page += "  var sensorId = data[0];";
+  page += "  var temperature = data[1];";
+  page += "  var status = data[2];";
+  page += "  document.getElementById(sensorId).querySelector('.temp').textContent = temperature + '°C';";
+  page += "  document.getElementById(sensorId).querySelector('.status').textContent = status;";
+  page += "}";
+  page += "</script>";
+  page += "</head>";
+  page += "<body>";
+  page += "<h1>Sensores</h1>";
+  page += "<div class='sensores'>";
+  page += "<div class='flex'>";
+
+  for (int i = 0; i < 10; ++i) {
+    page += "<div class='sensor' id='sensor-" + String(i + 1) + "'>";
+    page += "<p>Sensor - " + String(i + 1) + "</p>";
+    page += "<div class='temp' id='temp-" + String(i + 1) + "'>";
+    page += "0.00°C";  // Inicializando com zero ou outra representação
+    page += "</div>";
+    page += "<div class='status' id='status-" + String(i + 1) + "'>";
+    page += "Inativo";  // Inicializando com status inativo
+    page += "</div>";
+    page += "</div>";
+  }
+
+  page += "</div>";  // Fecha flex
+  page += "</div>";  // Fecha sensores
+  page += "</body></html>";
+
+  return page;
+}
+
