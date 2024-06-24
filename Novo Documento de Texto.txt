@@ -1,0 +1,30 @@
+server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    String html = "<html><head>";
+    html += "<style>";
+    html += "body { background-color: #121212; color: #ffffff; font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }";
+    html += "h1 { color: #bb86fc; margin: 20px; }";
+    html += ".sensor-container { display: flex; flex-wrap: wrap; justify-content: center; }";
+    html += ".sensor-block { background-color: #1f1f1f; border: 1px solid #bb86fc; border-radius: 10px; padding: 20px; margin: 10px; width: 200px; text-align: center; }";
+    html += "input[type=submit] { background-color: #bb86fc; color: #ffffff; border: none; padding: 10px 20px; text-decoration: none; cursor: pointer; font-size: 16px; margin: 20px; }";
+    html += "input[type=submit]:hover { background-color: #3700b3; }";
+    html += "canvas { max-width: 80vw; }";  // Limita o tamanho do gráfico
+    html += "@media (max-width: 600px) { .sensor-block { width: 100%; } }";
+    html += "</style>";
+    html += "<script>";
+    html += "if (!!window.EventSource) {";
+    html += "  var source = new EventSource('/events');";
+    html += "  source.addEventListener('new_readings', function(e) {";
+    html += "    var data = e.data.split(',');";
+    html += "    var html = '';";
+    html += "    for (var i = 0; i < data.length; i++) {";
+    html += "      html += '<div class=\"sensor-block\"><p>Sensor ' + i + ': ' + data[i] + ' °C</p></div>';";
+    html += "    }";
+    html += "    document.getElementById('sensorData').innerHTML = html;";
+    html += "  }, false);";
+    html += "}";
+    html += "</script>";
+    html += "<div id='sensorData' class='sensor-container'></div>";
+    html += "<form action=\"/download\"><input type=\"submit\" value=\"Baixar Log\"></form>";
+    html += "</body></html>";
+    request->send(200, "text/html", html);
+  });
