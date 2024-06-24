@@ -1,0 +1,275 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
+
+// Definição dos pinos do barramento 1-Wire
+#define ONE_WIRE_BUS_1 21
+#define ONE_WIRE_BUS_2 22
+#define ONE_WIRE_BUS_3 23
+
+OneWire oneWire1(ONE_WIRE_BUS_1);
+OneWire oneWire2(ONE_WIRE_BUS_2);
+OneWire oneWire3(ONE_WIRE_BUS_3);
+DallasTemperature sensors1(&oneWire1);
+DallasTemperature sensors2(&oneWire2);
+DallasTemperature sensors3(&oneWire3);
+
+// Definição do servidor web
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
+
+// Dados Wi-Fi
+const char* ssid = "ESP32-Access-Point";
+const char* password = "12345678";
+
+// Dados do gráfico
+const int numDataPoints = 10;
+float tempData1[numDataPoints];
+float tempData2[numDataPoints];
+float tempData3[numDataPoints];
+int dataCount = 0;
+
+// Função para inicializar o SPIFFS
+void initSPIFFS() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Erro ao montar o sistema de arquivos SPIFFS");
+    return;
+  }
+  Serial.println("SPIFFS montado com sucesso");
+}
+
+// Função para logar dados em um arquivo
+void logData() {
+  File file = SPIFFS.open("/datalog.txt", FILE_APPEND);
+  if (!file) {
+    Serial.println("Erro ao abrir o arquivo para log");
+    return;
+  }
+  sensors1.requestTemperatures(); // Solicitar as temperaturas do barramento 1
+  sensors2.requestTemperatures(); // Solicitar as temperaturas do barramento 2
+  sensors3.requestTemperatures(); // Solicitar as temperaturas do barramento 3
+
+  for (int i = 0; i < sensors1.getDeviceCount(); i++) {
+    float tempC = sensors1.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 1-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 1-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  for (int i = 0; i < sensors2.getDeviceCount(); i++) {
+    float tempC = sensors2.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 2-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 2-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  for (int i = 0; i < sensors3.getDeviceCount(); i++) {
+    float tempC = sensors3.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 3-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 3-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  file.println();
+  file.close();
+  Serial.println("Dados logados com sucesso");
+}
+
+// Função para enviar dados dos sensores via SSE
+void sendSensorData() {
+  String data = "";
+  sensors1.requestTemperatures(); // Solicitar as temperaturas do barramento 1
+  sensors2.requestTemperatures(); // Solicitar as temperaturas do barramento 2
+  sensors3.requestTemperatures(); // Solicitar as temperaturas do barramento 3
+
+  for (int i = 0; i < sensors1.getDeviceCount(); i++) {
+    if (i > 0) data += ",";
+    float tempC = sensors1.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+    if (dataCount < numDataPoints) tempData1[dataCount] = tempC;
+  }
+  for (int i = 0; i < sensors2.getDeviceCount(); i++) {
+    data += ",";
+    float tempC = sensors2.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+    if (dataCount < numDataPoints) tempData2[dataCount] = tempC;
+  }
+  for (int i = 0; i < sensors3.getDeviceCount(); i++) {
+    data += ",";
+    float tempC = sensors3.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+    if (dataCount < numDataPoints) tempData3[dataCount] = tempC;
+  }
+
+  if (dataCount < numDataPoints) {
+    dataCount++;
+  }
+
+  events.send(data.c_str(), "new_readings", millis());
+}
+
+// Função para gerar os dados iniciais do gráfico
+String generateInitialChartData() {
+  String chartData = "{";
+  chartData += "\"labels\": [";
+  for (int i = 0; i < numDataPoints; i++) {
+    chartData += "\"" + String(i) + "\",";
+  }
+  chartData += "],";
+  chartData += "\"datasets\": [";
+  chartData += "{";
+  chartData += "\"label\": \"Sensor 1\",";
+  chartData += "\"backgroundColor\": \"rgba(255, 99, 132, 0.2)\",";
+  chartData += "\"borderColor\": \"rgba(255, 99, 132, 1)\",";
+  chartData += "\"borderWidth\": 1,";
+  chartData += "\"data\": [" + getChartDataString(tempData1) + "]";
+  chartData += "},";
+  chartData += "{";
+  chartData += "\"label\": \"Sensor 2\",";
+  chartData += "\"backgroundColor\": \"rgba(54, 162, 235, 0.2)\",";
+  chartData += "\"borderColor\": \"rgba(54, 162, 235, 1)\",";
+  chartData += "\"borderWidth\": 1,";
+  chartData += "\"data\": [" + getChartDataString(tempData2) + "]";
+  chartData += "},";
+  chartData += "{";
+  chartData += "\"label\": \"Sensor 3\",";
+  chartData += "\"backgroundColor\": \"rgba(255, 206, 86, 0.2)\",";
+  chartData += "\"borderColor\": \"rgba(255, 206, 86, 1)\",";
+  chartData += "\"borderWidth\": 1,";
+  chartData += "\"data\": [" + getChartDataString(tempData3) + "]";
+  chartData += "}";
+  chartData += "]";
+  chartData += "}";
+  return chartData;
+}
+
+// Função auxiliar para converter os dados do gráfico em uma string
+String getChartDataString(float data[]) {
+  String dataString = "";
+  for (int i = 0; i < numDataPoints; i++) {
+    dataString += String(data[i], 2);
+    if (i < numDataPoints - 1) {
+      dataString += ",";
+    }
+  }
+  return dataString;
+}
+
+void setup() {
+  // Iniciar a comunicação serial
+  Serial.begin(115200);
+
+  // Iniciar os sensores de temperatura
+  sensors1.begin();
+  sensors2.begin();
+  sensors3.begin();
+
+  // Verificar se os sensores foram encontrados
+  int numberOfDevices1 = sensors1.getDeviceCount();
+  int numberOfDevices2 = sensors2.getDeviceCount();
+  int numberOfDevices3 = sensors3.getDeviceCount();
+
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 1: %d\n", numberOfDevices1);
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 2: %d\n", numberOfDevices2);
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 3: %d\n", numberOfDevices3);
+
+  if (numberOfDevices1 == 0 && numberOfDevices2 == 0 && numberOfDevices3 == 0) {
+    Serial.println("Nenhum sensor encontrado! Verifique as conexões.");
+    while (true); // Parar execução se nenhum sensor for encontrado
+  }
+
+  // Iniciar SPIFFS
+  initSPIFFS();
+
+  // Iniciar o modo AP (Access Point)
+  WiFi.softAP(ssid, password);
+  Serial.println("Access Point iniciado");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Configurar o servidor web
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    String html = "<html><head>";
+    html += "<style>";
+    html += "body { background-color: #121212; color: #ffffff; font-family: Arial, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }";
+    html += "h1 { color: #bb86fc; margin: 20px; }";
+    html += ".sensor-container { display: flex; flex-wrap: wrap; ";
+    // Continua...
+    html += "justify-content: center; }";
+    html += ".sensor-block { background-color: #1f1f1f; border: 1px solid #bb86fc; border-radius: 10px; padding: 20px; margin: 10px; width: 200px; text-align: center; }";
+    html += "input[type=submit] { background-color: #bb86fc; color: #ffffff; border: none; padding: 10px 20px; text-decoration: none; cursor: pointer; font-size: 16px; margin: 20px; }";
+    html += "input[type=submit]:hover { background-color: #3700b3; }";
+    html += "canvas { max-width: 80vw; }";  // Limita o tamanho do gráfico
+    html += "@media (max-width: 600px) { .sensor-block { width: 100%; } }";
+    html += "</style>";
+    html += "<script src='chart.min.js'></script>";  // Inclui a biblioteca Chart.js localmente
+    html += "</head><body><h1>Dados dos Sensores de Temperatura</h1>";
+    html += "<div id='sensorData' class='sensor-container'></div>";
+    html += "<canvas id='chart'></canvas>";  // Adiciona o elemento canvas para o gráfico
+    html += "<form action=\"/download\"><input type=\"submit\" value=\"Baixar Log\"></form>";
+    html += "<script>";
+    html += "if (!!window.EventSource) {";
+    html += "  var source = new EventSource('/events');";
+    html += "  source.addEventListener('new_readings', function(e) {";
+    html += "    var data = e.data.split(',');";
+    html += "    var html = '';";
+    html += "    for (var i = 0; i < data.length; i++) {";
+    html += "      html += '<div class=\"sensor-block\"><p>Sensor ' + i + ': ' + data[i] + ' °C</p></div>';";
+    html += "    }";
+    html += "    document.getElementById('sensorData').innerHTML = html;";
+    html += "  }, false);";
+    html += "}";
+    html += "var ctx = document.getElementById('chart').getContext('2d');";
+    html += "var chart = new Chart(ctx, {";
+    html += "  type: 'line',";
+    html += "  data: " + generateInitialChartData() + ",";
+    html += "  options: {";
+    html += "    responsive: true,";
+    html += "    maintainAspectRatio: false,";
+    html += "    scales: {";
+    html += "      y: {";
+    html += "        beginAtZero: false";
+    html += "      }";
+    html += "    }";
+    html += "  }";
+    html += "});";
+    html += "</script>";
+    html += "</body></html>";
+    request->send(200, "text/html", html);
+  });
+
+  // Rota para download do log
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/datalog.txt", "text/plain", true);
+  });
+
+  // Configurar eventos SSE
+  server.addHandler(&events);
+
+  server.begin();
+}
+
+void loop() {
+  // Logar os dados dos sensores a cada 60 segundos
+  static unsigned long lastLogTime = 0;
+  if (millis() - lastLogTime > 6000) {
+    lastLogTime = millis();
+    logData();
+  }
+
+  // Enviar dados dos sensores a cada 5 segundos
+  static unsigned long lastSendTime = 0;
+  if (millis() - lastSendTime > 5000) {
+    lastSendTime = millis();
+    sendSensorData();
+  }
+}
+
