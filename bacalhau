@@ -1,0 +1,184 @@
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
+
+// Definição dos pinos do barramento 1-Wire
+#define ONE_WIRE_BUS_1 4
+#define ONE_WIRE_BUS_2 5
+#define ONE_WIRE_BUS_3 18
+
+OneWire oneWire1(ONE_WIRE_BUS_1);
+OneWire oneWire2(ONE_WIRE_BUS_2);
+OneWire oneWire3(ONE_WIRE_BUS_3);
+DallasTemperature sensors1(&oneWire1);
+DallasTemperature sensors2(&oneWire2);
+DallasTemperature sensors3(&oneWire3);
+
+// Definição do servidor web
+AsyncWebServer server(80);
+AsyncEventSource events("/events");
+
+// Dados Wi-Fi
+const char* ssid = "ESP32-Access-Point";
+const char* password = "12345678";
+
+// Função para inicializar o SPIFFS
+void initSPIFFS() {
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Erro ao montar o sistema de arquivos SPIFFS");
+    return;
+  }
+  Serial.println("SPIFFS montado com sucesso");
+}
+
+// Função para logar dados em um arquivo
+void logData() {
+  File file = SPIFFS.open("/datalog.txt", FILE_APPEND);
+  if (!file) {
+    Serial.println("Erro ao abrir o arquivo para log");
+    return;
+  }
+  sensors1.requestTemperatures(); // Solicitar as temperaturas do barramento 1
+  sensors2.requestTemperatures(); // Solicitar as temperaturas do barramento 2
+  sensors3.requestTemperatures(); // Solicitar as temperaturas do barramento 3
+
+  for (int i = 0; i < sensors1.getDeviceCount(); i++) {
+    float tempC = sensors1.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 1-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 1-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  for (int i = 0; i < sensors2.getDeviceCount(); i++) {
+    float tempC = sensors2.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 2-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 2-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  for (int i = 0; i < sensors3.getDeviceCount(); i++) {
+    float tempC = sensors3.getTempCByIndex(i);
+    if (tempC == DEVICE_DISCONNECTED_C) {
+      file.printf("Sensor 3-%d: Desconectado\n", i);
+    } else {
+      file.printf("Sensor 3-%d: %.2f °C\n", i, tempC);
+    }
+  }
+
+  file.println();
+  file.close();
+  Serial.println("Dados logados com sucesso");
+}
+
+// Função para enviar dados dos sensores via SSE
+void sendSensorData() {
+  String data = "";
+  sensors1.requestTemperatures(); // Solicitar as temperaturas do barramento 1
+  sensors2.requestTemperatures(); // Solicitar as temperaturas do barramento 2
+  sensors3.requestTemperatures(); // Solicitar as temperaturas do barramento 3
+
+  for (int i = 0; i < sensors1.getDeviceCount(); i++) {
+    if (i > 0) data += ",";
+    float tempC = sensors1.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+  }
+  for (int i = 0; i < sensors2.getDeviceCount(); i++) {
+    data += ",";
+    float tempC = sensors2.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+  }
+  for (int i = 0; i < sensors3.getDeviceCount(); i++) {
+    data += ",";
+    float tempC = sensors3.getTempCByIndex(i);
+    data += (tempC == DEVICE_DISCONNECTED_C) ? "Desconectado" : String(tempC);
+  }
+
+  events.send(data.c_str(), "new_readings", millis());
+}
+
+void setup() {
+  // Iniciar a comunicação serial
+  Serial.begin(115200);
+
+  // Iniciar os sensores de temperatura
+  sensors1.begin();
+  sensors2.begin();
+  sensors3.begin();
+
+  // Verificar se os sensores foram encontrados
+  int numberOfDevices1 = sensors1.getDeviceCount();
+  int numberOfDevices2 = sensors2.getDeviceCount();
+  int numberOfDevices3 = sensors3.getDeviceCount();
+
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 1: %d\n", numberOfDevices1);
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 2: %d\n", numberOfDevices2);
+  Serial.printf("Número de dispositivos encontrados no barramento 1-Wire 3: %d\n", numberOfDevices3);
+
+  if (numberOfDevices1 == 0 && numberOfDevices2 == 0 && numberOfDevices3 == 0) {
+    Serial.println("Nenhum sensor encontrado! Verifique as conexões.");
+    while (true); // Parar execução se nenhum sensor for encontrado
+  }
+
+  // Iniciar SPIFFS
+  initSPIFFS();
+
+  // Iniciar o modo AP (Access Point)
+  WiFi.softAP(ssid, password);
+  Serial.println("Access Point iniciado");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Configurar o servidor web
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    String html = "<html><body><h1>Dados dos Sensores de Temperatura</h1>";
+    html += "<div id='sensorData'></div>";
+    html += "<form action=\"/download\"><input type=\"submit\" value=\"Baixar Log\"></form>";
+    html += "<script>";
+    html += "if (!!window.EventSource) {";
+    html += "  var source = new EventSource('/events');";
+    html += "  source.addEventListener('new_readings', function(e) {";
+    html += "    var data = e.data.split(',');";
+    html += "    var html = '';";
+    html += "    for (var i = 0; i < data.length; i++) {";
+    html += "      html += '<p>Sensor ' + i + ': ' + data[i] + ' °C</p>';";
+    html += "    }";
+    html += "    document.getElementById('sensorData').innerHTML = html;";
+    html += "  }, false);";
+    html += "}";
+    html += "</script>";
+    html += "</body></html>";
+    request->send(200, "text/html", html);
+  });
+
+  // Rota para download do log
+  server.on("/download", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/datalog.txt", "text/plain", true);
+  });
+
+  // Configurar eventos SSE
+  server.addHandler(&events);
+
+  server.begin();
+}
+
+void loop() {
+  // Logar os dados dos sensores a cada 60 segundos
+  static unsigned long lastLogTime = 0;
+  if (millis() - lastLogTime > 60000) {
+    lastLogTime = millis();
+    logData();
+  }
+
+  // Enviar dados dos sensores a cada 5 segundos
+  static unsigned long lastSendTime = 0;
+  if (millis() - lastSendTime > 5000) {
+    lastSendTime = millis();
+    sendSensorData();
+  }
+}
